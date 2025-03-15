@@ -3,9 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Split Screen URL Comparison Tool</title>
+    <title>URL Comparison Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        .alert {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #991b1b;
+        }
         .btn {
             background-color: #3b82f6;
             color: white;
@@ -26,100 +34,116 @@
         .btn-outline:hover {
             background-color: #eff6ff;
         }
-        .alert {
-            background-color: #fee2e2;
-            border: 1px solid #ef4444;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin: 1rem 0;
-            color: #991b1b;
+        @media (max-width: 768px) {
+            .grid-cols-1-md-grid-cols-2 {
+                grid-template-columns: 1fr;
+            }
+            .min-h-300px {
+                min-height: 200px;
+            }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gray-50 p-4 lg:p-8">
+<body class="min-h-screen bg-gray-50 p-4">
     <div class="max-w-7xl mx-auto space-y-6">
         <div class="bg-white rounded-lg shadow-sm p-6">
-            <h1 class="text-2xl font-bold text-gray-900 mb-4">Split Screen URL Comparison Tool</h1>
-            <p class="text-gray-600 mb-4">
-                Enter the URLs of the two webpages you want to compare (e.g., Chinese and English versions of a law or ordinance). 
-                The pages will open in new tabs or windows for side-by-side comparison.
-            </p>
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">URL Comparison Tool</h1>
             <form id="urlForm" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 grid-cols-1-md-grid-cols-2">
                     <div>
-                        <label for="leftUrl" class="block text-sm font-medium text-gray-700">Left URL (e.g., English)</label>
                         <input 
                             type="url" 
                             id="leftUrl" 
-                            placeholder="Enter first URL" 
+                            placeholder="Enter first URL (e.g., English)" 
                             class="w-full p-2 border rounded-lg"
                             required
                         >
                     </div>
                     <div>
-                        <label for="rightUrl" class="block text-sm font-medium text-gray-700">Right URL (e.g., Chinese)</label>
                         <input 
                             type="url" 
                             id="rightUrl" 
-                            placeholder="Enter second URL" 
+                            placeholder="Enter second URL (e.g., Chinese)" 
                             class="w-full p-2 border rounded-lg"
                             required
                         >
                     </div>
                 </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="submit" class="btn">Open in New Tabs</button>
-                    <button type="button" id="splitScreenBtn" class="btn btn-outline">Open in Split Screen</button>
+                <div class="flex justify-end">
+                    <button type="submit" class="btn">
+                        Compare
+                    </button>
                 </div>
             </form>
         </div>
 
-        <div id="instructions" class="bg-white rounded-lg shadow-sm p-6 hidden">
-            <h2 class="text-lg font-semibold text-gray-900 mb-2">Instructions for Split Screen Viewing</h2>
-            <p class="text-gray-600 mb-4">
-                To view the two webpages side by side:
-            </p>
-            <ul class="list-disc list-inside text-gray-600 space-y-2">
-                <li>Click "Open in New Tabs" to open both URLs in separate tabs.</li>
-                <li>Manually arrange the tabs side by side on your screen (e.g., drag tabs to split your browser window or use your operating system's window management tools).</li>
-                <li>Alternatively, click "Open in Split Screen" to open both URLs in separate browser windows, which you can then arrange side by side.</li>
-            </ul>
+        <div id="comparison" class="hidden bg-white rounded-lg shadow-sm p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 grid-cols-1-md-grid-cols-2 min-h-[600px]">
+                <div id="leftFrame" class="w-full h-full min-h-300px relative bg-gray-50 rounded-lg border"></div>
+                <div id="rightFrame" class="w-full h-full min-h-300px relative bg-gray-50 rounded-lg border"></div>
+            </div>
+            <div class="text-sm text-gray-500 text-center space-y-1 mt-4">
+                <p>Note: Due to security policies, some websites cannot be embedded directly.</p>
+                <p>In such cases, use the "Open in New Tab" button to view the website.</p>
+            </div>
         </div>
     </div>
 
     <script>
+        function createErrorDisplay(url) {
+            return `
+                <div class="alert h-full flex flex-col justify-center items-center text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3 class="text-lg font-semibold mb-2">Cannot Display Website</h3>
+                    <p class="mb-4">
+                        This website cannot be embedded due to security restrictions.
+                    </p>
+                    <button onclick="window.open('${url}', '_blank', 'noopener,noreferrer')" class="btn btn-outline">
+                        Open in New Tab
+                        <svg xmlns="http://www.w3.org/2000/svg" class="inline-block ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                    </button>
+                </div>
+            `;
+        }
+
         document.getElementById('urlForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const leftUrl = document.getElementById('leftUrl').value;
             const rightUrl = document.getElementById('rightUrl').value;
-
-            // Show instructions
-            document.getElementById('instructions').classList.remove('hidden');
-
-            // Open URLs in new tabs
-            window.open(leftUrl, '_blank', 'noopener,noreferrer');
-            window.open(rightUrl, '_blank', 'noopener,noreferrer');
-        });
-
-        document.getElementById('splitScreenBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            const leftUrl = document.getElementById('leftUrl').value;
-            const rightUrl = document.getElementById('rightUrl').value;
-
-            // Show instructions
-            document.getElementById('instructions').classList.remove('hidden');
-
-            // Open URLs in separate windows with specific dimensions for split-screen effect
-            const screenWidth = window.screen.width;
-            const screenHeight = window.screen.height;
-            const windowWidth = Math.floor(screenWidth / 2) - 10; // Slight offset for window borders
-            const windowHeight = screenHeight - 100; // Leave space for taskbar/dock
-
-            // Open left window
-            window.open(leftUrl, 'leftWindow', `width=${windowWidth},height=${windowHeight},left=0,top=0,noopener,noreferrer`);
-
-            // Open right window
-            window.open(rightUrl, 'rightWindow', `width=${windowWidth},height=${windowHeight},left=${windowWidth},top=0,noopener,noreferrer`);
+            
+            document.getElementById('comparison').classList.remove('hidden');
+            
+            // Setup left frame
+            const leftFrame = document.getElementById('leftFrame');
+            leftFrame.innerHTML = `<iframe src="${leftUrl}" class="w-full h-full rounded-lg" sandbox="allow-same-origin allow-scripts"></iframe>`;
+            const leftIframe = leftFrame.querySelector('iframe');
+            leftIframe.onerror = () => {
+                leftFrame.innerHTML = createErrorDisplay(leftUrl);
+            };
+            // Additional check for iframe load failure (e.g., due to X-Frame-Options)
+            leftIframe.onload = () => {
+                if (leftIframe.contentDocument === null || leftIframe.contentDocument.body.innerHTML === '') {
+                    leftFrame.innerHTML = createErrorDisplay(leftUrl);
+                }
+            };
+            
+            // Setup right frame
+            const rightFrame = document.getElementById('rightFrame');
+            rightFrame.innerHTML = `<iframe src="${rightUrl}" class="w-full h-full rounded-lg" sandbox="allow-same-origin allow-scripts"></iframe>`;
+            const rightIframe = rightFrame.querySelector('iframe');
+            rightIframe.onerror = () => {
+                rightFrame.innerHTML = createErrorDisplay(rightUrl);
+            };
+            // Additional check for iframe load failure (e.g., due to X-Frame-Options)
+            rightIframe.onload = () => {
+                if (rightIframe.contentDocument === null || rightIframe.contentDocument.body.innerHTML === '') {
+                    rightFrame.innerHTML = createErrorDisplay(rightUrl);
+                }
+            };
         });
     </script>
 </body>
